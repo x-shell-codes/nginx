@@ -56,19 +56,19 @@ function Help() {
 # Line Helper Functions                                                                                                #
 ########################################################################################################################
 function ErrorLine() {
-    echo "${RED_LINE}$1${NORMAL_LINE}"
+  echo "${RED_LINE}$1${NORMAL_LINE}"
 }
 
 function WarningLine() {
-    echo "${YELLOW_LINE}$1${NORMAL_LINE}"
+  echo "${YELLOW_LINE}$1${NORMAL_LINE}"
 }
 
 function SuccessLine() {
-    echo "${GREEN_LINE}$1${NORMAL_LINE}"
+  echo "${GREEN_LINE}$1${NORMAL_LINE}"
 }
 
 function InfoLine() {
-    echo "${BLUE_LINE}$1${NORMAL_LINE}"
+  echo "${BLUE_LINE}$1${NORMAL_LINE}"
 }
 
 ########################################################################################################################
@@ -109,10 +109,11 @@ function CheckRootUser() {
 ########################################################################################################################
 function NginxInstallCheck() {
   REQUIRED_PKG="nginx"
-  PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+  PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG | grep "install ok installed")
   if [ "" = "$PKG_OK" ]; then
     InfoLine "Installing $REQUIRED_PKG..."
-    sudo apt -y install $REQUIRED_PKG
+    apt install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y --force-yes $REQUIRED_PKG
+    systemctl enable nginx.service
     SuccessLine "$REQUIRED_PKG installed."
   else
     WarningLine "$REQUIRED_PKG is already installed."
@@ -124,7 +125,6 @@ function NginxInstallCheck() {
 ########################################################################################################################
 function NginxConfEdit() {
   grep -q "include /var/www/*/*" /etc/nginx/nginx.conf
-
   if [ $? == 1 ]; then
     InfoLine "/etc/nginx/nginx.conf editing..."
     sed -i "/sites-enabled/a \        include /var/www/*/*/nginx.conf;" /etc/nginx/nginx.conf
@@ -133,21 +133,57 @@ function NginxConfEdit() {
     WarningLine "/etc/nginx/nginx.conf already edited."
   fi
 
+  # Configure Primary Nginx Settings
+  sed -i "s/user www-data;/user deployer;/" /etc/nginx/nginx.conf
+  sed -i "s/worker_processes.*/worker_processes auto;/" /etc/nginx/nginx.conf
+  sed -i "s/# multi_accept.*/multi_accept on;/" /etc/nginx/nginx.conf
+  sed -i "s/# server_names_hash_bucket_size.*/server_names_hash_bucket_size 128;/" /etc/nginx/nginx.conf
+
   service nginx restart
 }
 
 ########################################################################################################################
 # Main Program                                                                                                         #
 ########################################################################################################################
-echo "${POWDER_BLUE_LINE}${BRIGHT_LINE}${REVERSE_LINE}   INSTALLING NGINX   ${NORMAL_LINE}"
+echo "${POWDER_BLUE_LINE}${BRIGHT_LINE}${REVERSE_LINE}INSTALLING NGINX${NORMAL_LINE}"
 
 CheckRootUser
+
+export DEBIAN_FRONTEND=noninteractive
 
 NginxInstallCheck
 
 echo
 
 NginxConfEdit
+
+# Generate dhparam File
+if [ ! -f /etc/nginx/dhparams.pem ]; then
+  openssl dhparam -out /etc/nginx/dhparams.pem 2048
+fi
+
+# Configure Gzip Settings
+wget -O /etc/nginx/conf.d/gzip.conf https://raw.githubusercontent.com/x-shell-codes/nginx/master/conf.d/gzip.conf
+
+# Configure Cloudflare Real IPs
+wget -O /etc/nginx/conf.d/cloudflare.conf https://raw.githubusercontent.com/x-shell-codes/nginx/master/conf.d/cloudflare.conf
+
+#service nginx restart
+NGINX=$(ps aux | grep nginx | grep -v grep)
+if [[ -z $NGINX ]]; then
+  service nginx start
+  echo "Started Nginx"
+else
+  service nginx reload
+  echo "Reloaded Nginx"
+fi
+
+echo "deployer ALL=NOPASSWD: /usr/sbin/service nginx *" >>/etc/sudoers.d/nginx
+
+# Add Deployer User To www-data Group
+usermod -a -G www-data deployer
+id deployer
+groups deployer
 
 echo
 

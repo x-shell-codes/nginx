@@ -185,9 +185,11 @@ function CertificateInstallation() {
 ########################################################################################################################
 # Main Program                                                                                                         #
 ########################################################################################################################
-echo "${POWDER_BLUE_LINE}${BRIGHT_LINE}${REVERSE_LINE}   CREATING DOMAIN   ${NORMAL_LINE}"
+echo "${POWDER_BLUE_LINE}${BRIGHT_LINE}${REVERSE_LINE}CREATING DOMAIN${NORMAL_LINE}"
 
 CheckRootUser
+
+export DEBIAN_FRONTEND=noninteractive
 
 NginxInstallCheck
 
@@ -207,7 +209,7 @@ if [ ! -d "/var/www/$domain" ]; then
 else
   WarningLine "/var/www/$domain folder already exists."
 fi
-chown www-data:www-data /var/www/$domain -R
+chown deployer:deployer /var/www/$domain -R
 
 echo
 
@@ -225,7 +227,7 @@ if [ ! -d "/var/www/$domain/$subdomain" ]; then
 else
   WarningLine "/var/www/$domain/$subdomain folder already exists."
 fi
-chown www-data:www-data /var/www/$domain/$subdomain -R
+chown deployer:deployer /var/www/$domain/$subdomain -R
 
 echo
 

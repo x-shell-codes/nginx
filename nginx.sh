@@ -183,7 +183,7 @@ function CreateDomain() {
     bash create_domain.sh --domain="$domain" --subdomain="$subdomain" --isLocal="$isLocal" --certificate="$certificate"
   else
     wget https://raw.githubusercontent.com/x-shell-codes/nginx/master/create_domain.sh
-    bash create_domain.sh
+    bash create_domain.sh --domain="$domain" --subdomain="$subdomain" --isLocal="$isLocal" --certificate="$certificate"
     rm create_domain.sh
   fi
 }
@@ -191,9 +191,11 @@ function CreateDomain() {
 ########################################################################################################################
 # Main Program                                                                                                         #
 ########################################################################################################################
-echo "${POWDER_BLUE_LINE}${BRIGHT_LINE}${REVERSE_LINE}   INSTALLING NGINX & CREATING DOMAIN   ${NORMAL_LINE}"
+echo "${POWDER_BLUE_LINE}${BRIGHT_LINE}${REVERSE_LINE}INSTALLING NGINX & CREATING DOMAIN${NORMAL_LINE}"
 
 CheckRootUser
+
+export DEBIAN_FRONTEND=noninteractive
 
 if [ -z "$domain" ]; then
   ErrorLine "Domain name is empty."
